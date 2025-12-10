@@ -25,10 +25,9 @@ def reorder_df(df, desired):
             df[col] = ""
     return df[desired]
 
-@app.life("/")
-def index():
-    return "OK"
-
+@app.route('/health', methods=['GET', 'HEAD'])
+def health_check():
+    return "OK", 200
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
