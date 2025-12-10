@@ -25,7 +25,7 @@
       margin-top: 15px;
       font-weight: bold;
     }
-    /* Стили для кастомной кнопки выбора файла */
+    /* Styles for buttons to select the file */
     .file-input-wrapper {
       position: relative;
       overflow: hidden;
@@ -73,7 +73,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>Dateien hochladen</h1>
+    <h1>Datei hochladen</h1>
     <form action="/" method="post" enctype="multipart/form-data">
       <label>Wählen Sie eine PDF-Datei (Invoice):</label>
       <div class="file-input-wrapper">
@@ -82,21 +82,7 @@
       </div>
       <span id="invoice-name" class="file-name"></span>
       
-      <label>Wählen Sie eine Excel-Datei (CA3):</label>
-      <div class="file-input-wrapper">
-        <button type="button" class="btn-file" onclick="document.getElementById('ca3').click()">Datei auswählen</button>
-        <input type="file" id="ca3" name="ca3" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onchange="updateFileName('ca3')" required>
-      </div>
-      <span id="ca3-name" class="file-name"></span>
-      
-      <label>Wählen Sie eine Excel-Datei (RRM):</label>
-      <div class="file-input-wrapper">
-        <button type="button" class="btn-file" onclick="document.getElementById('rrm').click()">Datei auswählen</button>
-        <input type="file" id="rrm" name="rrm" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onchange="updateFileName('rrm')" required>
-      </div>
-      <span id="rrm-name" class="file-name"></span>
-      
-      <button type="submit" class="submit-btn">Dateien verarbeiten</button>
+      <button type="submit" class="submit-btn">Datei verarbeiten</button>
     </form>
   </div>
   

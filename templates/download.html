@@ -38,7 +38,7 @@
 <body>
   <div class="container">
     <h1>Ergebnisse der Verarbeitung</h1>
-    <p>Falls der automatische Download nicht startet, klicken Sie bitte auf die folgenden Schaltflächen:</p>
+    <p>Klicken Sie bitte auf die folgenden Schaltflächen, um die Datei herunterzuladen:</p>
     {% for file in results %}
       <a class="button" href="{{ url_for('download_file', filename=file) }}">{{ file }}</a>
     {% endfor %}

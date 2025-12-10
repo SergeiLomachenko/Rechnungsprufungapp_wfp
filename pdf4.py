@@ -58,7 +58,9 @@ for page_text in pages[1:]:  # Analyse von Seiten, gestartet mit der zweiten
             date = line_parts[2]
             model = " ".join(line_parts[3:-2])
             total = line_parts[-1].replace("CHF", "").strip()  # Summe
-            invoice_nr = lines[i + 1].split()[0] if (i + 1) < len(lines) else ""
+            # invoice_nr = lines[i + 1].split()[0] if (i + 1) < len(lines) else ""
+            raw_invoice = lines[i + 1].split()[0] if (i + 1) < len(lines) else ""
+            invoice_nr = raw_invoice.split("&")[0].split("/")[0]
             
             # Raw herausnehmen (mit dem Faktor)
             location_line = ""
@@ -313,9 +315,6 @@ with pd.ExcelWriter("file3.xlsx", engine="openpyxl") as writer:
 # und Ausgabe der Ergebnisse in file4.xlsx
 # --------------------------------------------------
 
-import pandas as pd
-from openpyxl.utils import get_column_letter
-
 # 1. Laden der Referenzdaten aus den Excel-Dateien ca3.xlsx und rrm.xlsx
 df_ca3 = pd.read_excel("ca3.xlsx")
 df_rrm = pd.read_excel("rrm.xlsx")
@@ -403,7 +402,11 @@ def compare_city(val1, val2):
     
     # Wenn die Länge der längsten gemeinsamen Teilzeichenkette mindestens 5 Zeichen beträgt,
     # werden die Werte als ähnlich betrachtet.
-    if longest_common_substring(s1, s2) >= 4:
+    if (
+        longest_common_substring(s1, s2) >= 3 
+        or (longest_common_substring(s1, s2) >= 2 and s1 == "au") 
+        or (longest_common_substring(s1, s2) >= 2 and s2 == "au")
+        ):
         return "OK"
     
     # Ansonsten gelten die Werte als unterschiedlich.
@@ -450,24 +453,86 @@ for idx, row in df2.iterrows():
         ref = None
 
     # Falls eine Referenzzeile gefunden wurde, erfolgt der Vergleich.
-    if ref is not None:
-        auftraggeber_vergleich    = compare_text_values(row["Auftraggeber"], ref["Auftraggeber"])
-        vin_vergleich             = compare_text_values(row["VIN"], ref["vin"])
-        loadingcity_vergleich = compare_city(row["Loadingcity"], ref["loadingcity"])
-        delivercity_vergleich = compare_city(row["Delivercity"], ref["delivercity"])
-        faktor_vergleich          = compare_numeric_values(row["Faktor"], ref["Faktor"])
-        transportrpeis_vergleich  = compare_numeric_values(row["Total"], ref["Gallikerpreis"])
-        telavis_vergleich         = compare_numeric_values(row["Terminverein. Absender CarAukt"], ref["Telavis"])
-        seilwinde_vergleich       = compare_numeric_values(row["Seilwinde"], ref["Seilwinde"])
-        terminzuschlag_vergleich  = compare_numeric_values(row["Terminzuschlag"], ref["Terminzuschlag"])
-        # Änderung: Für E-FahrzeugVergleich wird nun Car Auktion Protokoll aus file2, 
-        # verglichen mit EÜbername aus der Referenzdatei.
-        efahrzeug_vergleich       = compare_numeric_values(row["Car Auktion Protokoll"], ref["EÜbernahme"])
+    def compare_null_logic(val1, val2):
+        # считаем пустыми: None, "", пробелы, NaN
+        def is_empty(v):
+            if v is None:
+                return True
+            if isinstance(v, str) and v.strip() == "":
+                return True
+            try:
+                import math
+                if isinstance(v, float) and math.isnan(v):
+                    return True
+            except:
+                pass
+            return False
+
+        if is_empty(val1) and is_empty(val2):
+            return "OK"
+        elif not is_empty(val1) and not is_empty(val2):
+            return "OK"
+        else:
+            return "NOK"
         
-        leerfahrt_vergleich       = compare_text_values(row["LEERFAHRT"], ref["Leerfahrt"])
+    if ref is not None:
+        auftraggeber_vergleich = compare_text_values(row["Auftraggeber"], ref["Auftraggeber"]) 
+        vin_vergleich = compare_text_values(row["VIN"], ref["vin"]) 
+        loadingcity_vergleich = compare_city(row["Loadingcity"], ref["loadingcity"]) 
+        delivercity_vergleich = compare_city(row["Delivercity"], ref["delivercity"])
+        faktor_vergleich         = compare_null_logic(row["Faktor"], ref["Faktor"])
+        # transportrpeis_vergleich = compare_null_logic(row["Total"], ref["Gallikerpreis"])
+        transportrpeis_vergleich = compare_null_logic(row["Total"], ref["Faktor"])
+        # telavis_vergleich        = compare_null_logic(row["Terminverein. Absender CarAukt"], ref["Telavis"])
+        def is_emptytel(val):
+            return val is None or (isinstance(val, str) and val.strip() == "")
+        if is_emptytel(row["Terminverein. Absender CarAukt"]):
+            telavis_vergleich = "OK"
+        else:
+            telavis_vergleich = compare_null_logic(row["Terminverein. Absender CarAukt"], ref["Terminzuschlag"])
+
+        # seilwinde_vergleich      = compare_null_logic(row["Seilwinde"], ref["Seilwinde"])
+        def is_emptyseil(val):
+            return val is None or (isinstance(val, str) and val.strip() == "")
+        if is_emptyseil(row["Seilwinde"]):
+            seilwinde_vergleich = "OK"
+        else:
+            seilwinde_vergleich = compare_null_logic(row["Seilwinde"], ref["Seilwinde"])
+        
+        # compare Seilwindeintransport
+        def is_emptyseiltr(val):
+            return val is None or (isinstance(val, str) and val.strip() == "")
+        if is_emptyseiltr(row["Seilwinde"]):
+            seilwinde_transport_vergleich = "OK"
+        else:
+            seilwinde_transport_vergleich = compare_null_logic(row["Seilwinde"], ref["Seilwindeintransport"])
+
+        # terminzuschlag_vergleich = compare_null_logic(row["Terminzuschlag"], ref["Terminzuschlag"])
+        def is_emptytermin(val):
+            return val is None or (isinstance(val, str) and val.strip() == "")
+        if is_emptytermin(row["Terminzuschlag"]):
+            terminzuschlag_vergleich = "OK"
+        else:
+            terminzuschlag_vergleich = compare_null_logic(row["Terminzuschlag"], ref["Terminzuschlag"])
+        # efahrzeug_vergleich      = compare_null_logic(row["Car Auktion Protokoll"], ref["EÜbernahme"])
+        # below is new function for uebernahme comparison
+        def is_empty(val):
+            return val is None or (isinstance(val, str) and val.strip() == "")
+        if is_empty(row["Car Auktion Protokoll"]):
+            efahrzeug_vergleich = "OK"
+        else:
+            efahrzeug_vergleich = compare_null_logic(row["Car Auktion Protokoll"], ref["EÜbernahme"])
+        # leerfahrt_vergleich      = compare_null_logic(row["LEERFAHRT"], ref["Leerfahrt"])
+        def is_emptyleer(val):
+            return val is None or (isinstance(val, str) and val.strip() == "")
+        if is_empty(row["LEERFAHRT"]):
+            leerfahrt_vergleich = "OK"
+        else:
+            leerfahrt_vergleich = compare_null_logic(row["LEERFAHRT"], ref["Leerfahrt"])
+
     else:
         auftraggeber_vergleich = vin_vergleich = loadingcity_vergleich = delivercity_vergleich = "NOK"
-        faktor_vergleich = transportrpeis_vergleich = telavis_vergleich = seilwinde_vergleich = terminzuschlag_vergleich = "NOK"
+        faktor_vergleich = transportrpeis_vergleich = telavis_vergleich = seilwinde_vergleich = seilwinde_transport_vergleich = terminzuschlag_vergleich = "NOK"
         efahrzeug_vergleich = leerfahrt_vergleich = "NOK"
     
     # 5. Generierung der Bemerkungen-Spalte mit detaillierter Vergleichslogik
@@ -494,44 +559,58 @@ for idx, row in df2.iterrows():
 
     if faktor_vergleich == "NOK":
         if faktor_file2 is None and faktor_ref is not None:
-            bemerkungen.append("Faktor ist vorhanden nur auf CA3 (RRM)")
+            bemerkungen.append("Etwas stimmt nicht mit dem Transportauftrag und wfps 9010, 9020, 2010. Bitte prüfen")
         elif faktor_file2 is not None and faktor_ref is None:
-            bemerkungen.append("Faktor ist vorhanden nur in der Gallikerrechnung")
+            bemerkungen.append("Etwas stimmt nicht mit dem Transportauftrag und wfps 9010, 9020, 2010. Bitte prüfen")
         elif faktor_file2 < faktor_ref:
-            bemerkungen.append("Faktor in Galliker Rechnung ist geringer als auf CA3 (RRM)")
+            bemerkungen.append("Etwas stimmt nicht mit dem Transportauftrag und wfps 9010, 9020, 2010. Bitte prüfen")
         elif faktor_file2 > faktor_ref:
-            bemerkungen.append("Faktor in Galliker Rechnung ist größer als auf CA3 (RRM)")
+            bemerkungen.append("Etwas stimmt nicht mit dem Transportauftrag und wfps 9010, 9020, 2010. Bitte prüfen")
 
-    # Transportpreis Vergleich mit spezifischer Logik
-    transportpreis_file2 = convert_numeric(row["Total"])
-    try:
-        transportpreis_ref = convert_numeric(ref["Gallikerpreis"])
-    except (TypeError, KeyError):
-        transportpreis_ref = None
+    # Transportpreis Vergleich mit spezifischer Logik. Habe das unten kommentiert
+    # transportpreis_file2 = convert_numeric(row["Total"])
+    # try:
+    #     transportpreis_ref = convert_numeric(ref["Gallikerpreis"])
+    # except (TypeError, KeyError):
+    #     transportpreis_ref = None
 
-    if transportrpeis_vergleich == "NOK":
-        if transportpreis_file2 is None and transportpreis_ref is not None:
-            bemerkungen.append("Transportpreis ist vorhanden nur auf CA3 (RRM)")
-        elif transportpreis_file2 is not None and transportpreis_ref is None:
-            bemerkungen.append("Transportpreis ist vorhanden nur in der Gallikerrechnung")
-        elif transportpreis_file2 < transportpreis_ref:
-            bemerkungen.append("Transportpreis in Galliker Rechnung ist geringer als kalkulatorischer Transportpreis auf CA3 (RRM)")
-        elif transportpreis_file2 > transportpreis_ref:
-            bemerkungen.append("Transportpreis in Galliker Rechnung ist größer als kalkulatorischer Transportpreis auf CA3 (RRM)")
+    # if transportrpeis_vergleich == "NOK":
+    #     if transportpreis_file2 is None and transportpreis_ref is not None:
+    #         bemerkungen.append("Etwas stimmt nicht mit dem Transportauftrag und wfps 9010, 9020, 2010. Bitte prüfen")
+    #     elif transportpreis_file2 is not None and transportpreis_ref is None:
+    #         bemerkungen.append("Etwas stimmt nicht mit dem Transportauftrag und wfps 9010, 9020, 2010. Bitte prüfen")
+    #     elif transportpreis_file2 < transportpreis_ref:
+    #         bemerkungen.append("Etwas stimmt nicht mit dem Transportauftrag und wfps 9010, 9020, 2010. Bitte prüfen")
+    #     elif transportpreis_file2 > transportpreis_ref:
+    #         bemerkungen.append("Etwas stimmt nicht mit dem Transportauftrag und wfps 9010, 9020, 2010. Bitte prüfen")
 
-    # Telavis Vergleich mit spezifischer Logik
+    # Terminvereinbaren Vergleich mit spezifischer Logik
     if telavis_vergleich == "NOK":
         telavis_file2 = "" if pd.isna(row["Terminverein. Absender CarAukt"]) else str(row["Terminverein. Absender CarAukt"]).strip()
         try:
-            telavis_ref_val = "" if pd.isna(ref["Telavis"]) else str(ref["Telavis"]).strip()
+            telavis_ref_val = "" if pd.isna(ref["Terminzuschlag"]) else str(ref["Terminzuschlag"]).strip()
         except (TypeError, KeyError):
             telavis_ref_val = ""
         if telavis_file2 == "" and telavis_ref_val != "":
-            bemerkungen.append("Telavis ist vorhanden nur auf CA3 (RRM)")
+            bemerkungen.append("Terminvereinbaren ist vorhanden nur auf CA3 (RRM)")
         elif telavis_file2 != "" and telavis_ref_val == "":
-            bemerkungen.append("Telavis ist vorhanden nur in der Gallikerrechnung")
+            bemerkungen.append("Terminvereinbaren ist vorhanden nur in der Gallikerrechnung")
         else:
             bemerkungen.append("Terminvereinbarung weicht ab")
+
+    # Seilwinde Vergleich old piece of code 
+    # if seilwinde_vergleich == "NOK":
+    #     seilwinde_file2 = "" if pd.isna(row["Seilwinde"]) else str(row["Seilwinde"]).strip()
+    #     try:
+    #         seilwinde_ref_val = "" if pd.isna(ref["Seilwinde"]) else str(ref["Seilwinde"]).strip()
+    #     except (TypeError, KeyError):
+    #         seilwinde_ref_val = ""
+    #     if seilwinde_file2 == "" and seilwinde_ref_val != "":
+    #         bemerkungen.append("Seilwinde ist vorhanden nur auf CA3 (RRM)")
+    #     elif seilwinde_file2 != "" and seilwinde_ref_val == "":
+    #         bemerkungen.append("Seilwinde ist vorhanden nur in der Gallikerrechnung")
+    #     else:
+    #         bemerkungen.append("Seilwinde unterschiedlich")
 
     # Seilwinde Vergleich
     if seilwinde_vergleich == "NOK":
@@ -540,12 +619,27 @@ for idx, row in df2.iterrows():
             seilwinde_ref_val = "" if pd.isna(ref["Seilwinde"]) else str(ref["Seilwinde"]).strip()
         except (TypeError, KeyError):
             seilwinde_ref_val = ""
-        if seilwinde_file2 == "" and seilwinde_ref_val != "":
-            bemerkungen.append("Seilwinde ist vorhanden nur auf CA3 (RRM)")
-        elif seilwinde_file2 != "" and seilwinde_ref_val == "":
-            bemerkungen.append("Seilwinde ist vorhanden nur in der Gallikerrechnung")
-        else:
-            bemerkungen.append("Seilwinde unterschiedlich")
+
+        # Fall 1: beide Vergleiche NOK → alte Logik
+        if seilwinde_transport_vergleich == "NOK":
+            if seilwinde_file2 == "" and seilwinde_ref_val != "":
+                bemerkungen.append("Seilwinde ist vorhanden nur auf CA3 (RRM)")
+            elif seilwinde_file2 != "" and seilwinde_ref_val == "":
+                bemerkungen.append("Seilwinde ist vorhanden nur in der Gallikerrechnung")
+            else:
+                bemerkungen.append("Seilwinde unterschiedlich")
+
+        # Fall 2: Seilwinde NOK, Transport OK → erweiterter Kommentar
+        elif seilwinde_transport_vergleich == "OK":
+            if seilwinde_file2 != "" and seilwinde_ref_val == "":
+                bemerkungen.append(
+                    "Seilwinde ist vorhanden nur in der Gallikerrechnung. Mit hoher Wahrscheinlichkeit ist der Seilwindepreis schon im Transportpreis berücksichtigt"
+                )
+            else:
+                if seilwinde_file2 == "" and seilwinde_ref_val != "":
+                    bemerkungen.append("Seilwinde ist vorhanden nur auf CA3 (RRM)")
+                else:
+                    bemerkungen.append("Seilwinde unterschiedlich")
 
     # Terminzuschlag Vergleich
     if terminzuschlag_vergleich == "NOK":
@@ -585,7 +679,7 @@ for idx, row in df2.iterrows():
         if leerfahrt_file2 == "" and leerfahrt_ref_val != "":
             bemerkungen.append("Leerfahrt ist vorhanden nur auf CA3 (RRM)")
         elif leerfahrt_file2 != "" and leerfahrt_ref_val == "":
-            bemerkungen.append("Leerfahrt ist vorhanden nur in der Gallikerrechnung")
+            bemerkungen.append("Leerfahrt ist vorhanden nur in der Gallikerrechnung. Bitte den 'Comment' in WFP 2900 prüfen")
         else:
             bemerkungen.append("Leerfahrt bitte prüfen")
 
@@ -593,7 +687,43 @@ for idx, row in df2.iterrows():
     bemerkungen_text = ", ".join(bemerkungen) if bemerkungen else ""
 
     # 6. Zusammenstellung der neuen Zeile mit den Originaldaten aus file2 und den Vergleichsergebnissen
-    new_row = {
+    # new_row = {
+    #     "InvoiceNr": row["InvoiceNr"],
+    #     "Auftraggeber": row["Auftraggeber"],  # Auftraggeber aus file2
+    #     "VIN": row["VIN"],
+    #     "Model": row["Model"],
+    #     "Faktor": row["Faktor"],
+    #     "Total": row["Total"],
+    #     "Loadingcity": row["Loadingcity"],
+    #     "Delivercity": row["Delivercity"],
+    #     "LEERFAHRT": row["LEERFAHRT"],
+    #     "Car Auktion Protokoll": row["Car Auktion Protokoll"],
+    #     "Terminverein. Absender CarAukt": row["Terminverein. Absender CarAukt"],
+    #     "Seilwinde": row["Seilwinde"],
+    #     "Terminzuschlag": row["Terminzuschlag"],
+    #     "E-Fahrzeug": row["E-Fahrzeug"],
+    #     # Vergleichsergebnisse
+    #     "AuftraggeberVergleich": auftraggeber_vergleich,
+    #     "VINVergleich": vin_vergleich,
+    #     "LoadingcityVergleich": loadingcity_vergleich,
+    #     "DelivercityVergleich": delivercity_vergleich,
+    #     "FaktorVergleich": faktor_vergleich,
+    #     "TransportrpeisVergleich": transportrpeis_vergleich,
+    #     "TelavisVergleich": telavis_vergleich,
+    #     "SeilwindeVergleich": seilwinde_vergleich,
+    #     "SeilwindeTransportVergleich": seilwinde_transport_vergleich,
+    #     "TerminzuschlagVergleich": terminzuschlag_vergleich,
+    #     "E-FahrzeugVergleich": efahrzeug_vergleich,
+    #     "LeerfahrtVergleich": leerfahrt_vergleich,
+    #     "Bemerkungen": bemerkungen_text
+    # }
+    # compare_results.append(new_row)
+
+# 7. Erstellen eines neuen DataFrames für file4 mit den Vergleichsergebnissen
+# df4 = pd.DataFrame(compare_results)
+
+# 8. Daten für den Fehlerreport zusammenstellen
+    fehler_row = {
         "InvoiceNr": row["InvoiceNr"],
         "Auftraggeber": row["Auftraggeber"],  # Auftraggeber aus file2
         "VIN": row["VIN"],
@@ -602,40 +732,43 @@ for idx, row in df2.iterrows():
         "Total": row["Total"],
         "Loadingcity": row["Loadingcity"],
         "Delivercity": row["Delivercity"],
-        "LEERFAHRT": row["LEERFAHRT"],
-        "Car Auktion Protokoll": row["Car Auktion Protokoll"],
-        "Terminverein. Absender CarAukt": row["Terminverein. Absender CarAukt"],
-        "Seilwinde": row["Seilwinde"],
-        "Terminzuschlag": row["Terminzuschlag"],
-        "E-Fahrzeug": row["E-Fahrzeug"],
+        # "LEERFAHRT": row["LEERFAHRT"],
+        # "Car Auktion Protokoll": row["Car Auktion Protokoll"],
+        # "Terminverein. Absender CarAukt": row["Terminverein. Absender CarAukt"],
+        # "Seilwinde": row["Seilwinde"],
+        # "Terminzuschlag": row["Terminzuschlag"],
+        # "E-Fahrzeug": row["E-Fahrzeug"],
         # Vergleichsergebnisse
-        "AuftraggeberVergleich": auftraggeber_vergleich,
-        "VINVergleich": vin_vergleich,
-        "LoadingcityVergleich": loadingcity_vergleich,
-        "DelivercityVergleich": delivercity_vergleich,
-        "FaktorVergleich": faktor_vergleich,
-        "TransportrpeisVergleich": transportrpeis_vergleich,
-        "TelavisVergleich": telavis_vergleich,
-        "SeilwindeVergleich": seilwinde_vergleich,
-        "TerminzuschlagVergleich": terminzuschlag_vergleich,
-        "E-FahrzeugVergleich": efahrzeug_vergleich,
-        "LeerfahrtVergleich": leerfahrt_vergleich,
         "Bemerkungen": bemerkungen_text
     }
-    compare_results.append(new_row)
+    # nur hinzufügen, wenn Bemerkungen nicht leer sind
+    if bemerkungen_text and bemerkungen_text.strip() != "":
+        compare_results.append(fehler_row)
 
-# 7. Erstellen eines neuen DataFrames für file4 mit den Vergleichsergebnissen
+# 9. Erstellen eines neuen DataFrames für file4 mit den Vergleichsergebnissen
 df4 = pd.DataFrame(compare_results)
 
-# 8. Speichern des Ergebnisses in file4.xlsx mit einheitlicher Spaltenbreite
+# 10. Speichern des Ergebnisses in file4.xlsx mit einheitlicher Spaltenbreite
 with pd.ExcelWriter("file4.xlsx", engine="openpyxl") as writer:
     df4.to_excel(writer, index=False)
     worksheet = writer.sheets["Sheet1"]
     for col_num, column_name in enumerate(df4.columns, start=1):
         if column_name == "Bemerkungen":
-            worksheet.column_dimensions[get_column_letter(col_num)].width = 75  # x3 Breite
+            worksheet.column_dimensions[get_column_letter(col_num)].width = 105  # x7 Breite
+        elif column_name == "Model":
+            worksheet.column_dimensions[get_column_letter(col_num)].width = 30  # x2 Breite
+        elif column_name == "VIN":
+            worksheet.column_dimensions[get_column_letter(col_num)].width = 20  # x2 Breite
+        elif column_name == "Faktor":
+            worksheet.column_dimensions[get_column_letter(col_num)].width = 8
+        elif column_name == "Total":
+            worksheet.column_dimensions[get_column_letter(col_num)].width = 8
+        elif column_name == "InvoiceNr":
+            worksheet.column_dimensions[get_column_letter(col_num)].width = 10
+        elif column_name == "Auftraggeber":
+            worksheet.column_dimensions[get_column_letter(col_num)].width = 12
         else:
-            worksheet.column_dimensions[get_column_letter(col_num)].width = 25  # normale Breite
+            worksheet.column_dimensions[get_column_letter(col_num)].width = 15  # normale Breite
 
-print("✅ Die Info ist in file1.xlsx, file2.xlsx und file3.xlsx erfolgreich gespeichert!")
-print("✅ Der Vergleich wurde in file4.xlsx erfolgreich gespeichert!")
+print("Die Info ist in file1.xlsx, file2.xlsx und file3.xlsx erfolgreich gespeichert!")
+print("Der Vergleich wurde in file4.xlsx erfolgreich gespeichert!")
