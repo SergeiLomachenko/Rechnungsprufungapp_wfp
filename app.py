@@ -5,6 +5,7 @@ import subprocess
 import sys
 import uuid
 import json
+import httpx
 from flask import Flask, render_template, request, redirect, flash, url_for, send_file
 
 app = Flask(__name__)
@@ -65,8 +66,8 @@ def index():
         # invoice_file.save(invoice_path)
 
         # For deploying on render
-        CA3 = os.getenv("CA3_URL", verify=False)
-        RRM = os.getenv("RRM_URL", verify=False)
+        CA3 = os.getenv("CA3_URL")
+        RRM = os.getenv("RRM_URL")
 
         # For local deployment, we just read config.json
         if not CA3 or not RRM:
@@ -78,7 +79,7 @@ def index():
                 RRM = config.get("RRM_URL", "")
         
         # CA3
-        resp_ca3 = requests.get(CA3)
+        resp_ca3 = requests.get(CA3, verify=False)
         if resp_ca3.status_code == 200:
             data_ca3 = resp_ca3.json()
             df_public_ca3 = pd.json_normalize(data_ca3) 
@@ -90,7 +91,7 @@ def index():
             print("Error while saving CA3 file:", resp_ca3.status_code, resp_ca3.text[:200])
 
         # RRM
-        resp_rrm = requests.get(RRM)
+        resp_rrm = requests.get(RRM, verify=False)
         if resp_rrm.status_code == 200:
             data_rrm = resp_rrm.json()
             df_public_rrm = pd.json_normalize(data_rrm) 
