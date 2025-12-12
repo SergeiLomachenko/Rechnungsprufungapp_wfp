@@ -5,8 +5,6 @@ import subprocess
 import sys
 import uuid
 import json
-import time
-import asyncio
 import httpx
 from flask import Flask, render_template, request, redirect, flash, url_for, send_file
 
@@ -80,14 +78,34 @@ def index():
                 CA3 = config.get("CA3_URL", "")
                 RRM = config.get("RRM_URL", "")
         
-        fetch_start = time.perf_counter()
-        download_reports(CA3, RRM)
-        print(f"Metabase fetch finished in {time.perf_counter() - fetch_start:.2f}s")
+        # CA3
+        # resp_ca3 = requests.get(CA3, verify=False)
+        resp_ca3 = httpx.get(CA3, timeout=120, follow_redirects=True)
+        if resp_ca3.status_code == 200:
+            data_ca3 = resp_ca3.json()
+            df_public_ca3 = pd.json_normalize(data_ca3) 
+            df_public_ca3 = reorder_df(df_public_ca3, DESIRED_ORDER)
+            ca3_path = os.path.join(BASE_DIR, 'ca3.xlsx')
+            df_public_ca3.to_excel(ca3_path, index=False, engine="openpyxl")
+            print("Excel CA3 erfolgreich gespeichert!")
+        else:
+            print("Error while saving CA3 file:", resp_ca3.status_code, resp_ca3.text[:200])
+
+        # RRM
+        # resp_rrm = requests.get(RRM, verify=False)
+        resp_rrm = httpx.get(RRM, timeout=120, follow_redirects=True)
+        if resp_rrm.status_code == 200:
+            data_rrm = resp_rrm.json()
+            df_public_rrm = pd.json_normalize(data_rrm) 
+            df_public_rrm = reorder_df(df_public_rrm, DESIRED_ORDER)
+            rrm_path = os.path.join(BASE_DIR, 'rrm.xlsx')
+            df_public_rrm.to_excel(rrm_path, index=False, engine="openpyxl")
+            print("Excel RRM erfolgreich gespeichert!")
+        else:
+            print("Error while saving RRM file:", resp_rrm.status_code, resp_rrm.text[:200])
 
         # We call the analysis function, which will do the pdf4.py script and process the files
-        analysis_start = time.perf_counter()
         run_analysis()
-        print(f"Analysis finished in {time.perf_counter() - analysis_start:.2f}s")
         
         # We delete the files, as we don not need them anymore 
         for f in ['invoice.pdf', 'ca3.xlsx', 'rrm.xlsx']:
@@ -99,44 +117,6 @@ def index():
         return redirect(url_for("download_page"))
     
     return render_template("index.html")
-
-def download_reports(ca3_url, rrm_url):
-    async def fetch():
-        timeout = httpx.Timeout(90.0, connect=10.0)
-        async with httpx.AsyncClient(
-            timeout=timeout,
-            follow_redirects=True,
-            http2=True,
-            headers={"Accept-Encoding": "gzip, deflate"}
-        ) as client:
-            return await asyncio.gather(client.get(ca3_url), client.get(rrm_url))
-
-    try:
-        resp_ca3, resp_rrm = asyncio.run(fetch())
-    except Exception as exc:
-        print("Metabase fetch failed:", exc)
-        return
-
-    if resp_ca3.status_code == 200:
-        data_ca3 = resp_ca3.json()
-        df_public_ca3 = pd.json_normalize(data_ca3) 
-        df_public_ca3 = reorder_df(df_public_ca3, DESIRED_ORDER)
-        ca3_path = os.path.join(BASE_DIR, 'ca3.xlsx')
-        df_public_ca3.to_excel(ca3_path, index=False, engine="openpyxl")
-        print("Excel CA3 erfolgreich gespeichert!")
-    else:
-        print("Error while saving CA3 file:", resp_ca3.status_code, resp_ca3.text[:200])
-
-    if resp_rrm.status_code == 200:
-        data_rrm = resp_rrm.json()
-        df_public_rrm = pd.json_normalize(data_rrm) 
-        df_public_rrm = reorder_df(df_public_rrm, DESIRED_ORDER)
-        rrm_path = os.path.join(BASE_DIR, 'rrm.xlsx')
-        df_public_rrm.to_excel(rrm_path, index=False, engine="openpyxl")
-        print("Excel RRM erfolgreich gespeichert!")
-    else:
-        print("Error while saving RRM file:", resp_rrm.status_code, resp_rrm.text[:200])
-
 
 def run_analysis():
     """
