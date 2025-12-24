@@ -9,12 +9,12 @@
       font-family: Arial, sans-serif;
     }
     .container {
-      max-width: 500px;
-      margin: 50px auto;
+      max-width: 640px;
+      margin: 60px auto;
       background: #fff;
-      padding: 25px;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      padding: 32px;
+      border-radius: 10px;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.22);
     }
     h1 {
       text-align: center;
@@ -24,6 +24,43 @@
       display: block;
       margin-top: 15px;
       font-weight: bold;
+    }
+    .select-wrapper {
+      position: relative;
+      margin-top: 8px;
+      display: inline-block;
+      width: 100%;
+    }
+    .select-wrapper select {
+      width: 100%;
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      padding: 10px 40px 10px 12px;
+      border-radius: 6px;
+      border: 1px solid #7ab4ff;
+      background: linear-gradient(135deg, #e6f1ff, #ffffff);
+      font-size: 14px;
+      color: #0b3c7f;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0, 123, 255, 0.25);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+    .select-wrapper select:focus {
+      outline: none;
+      border-color: #007bff;
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+      background: linear-gradient(135deg, #d9ebff, #ffffff);
+    }
+    .select-wrapper::after {
+      content: "▾";
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px;
+      color: #007bff;
+      pointer-events: none;
     }
     /* Styles for buttons to select the file */
     .file-input-wrapper {
@@ -75,13 +112,26 @@
   <div class="container">
     <h1>Datei hochladen</h1>
     <form action="/" method="post" enctype="multipart/form-data">
-      <label>Wählen Sie eine PDF-Datei (Invoice):</label>
+      
+      <!-- Rechnungstyp Auswahl -->
+      <label for="rechnungstyp">Rechnungstyp auswählen:</label>
+      <div class="select-wrapper">
+        <select name="rechnungstyp" id="rechnungstyp" required>
+          <option value="pdf4">Hauptrechnung Galliker PDF</option>
+          <option value="pdf5">Ausweise und Schilder Galliker Excel</option>
+          <option value="pdf6">Service Leistungen Galliker Excel</option>
+        </select>
+      </div>
+      
+      <!-- Datei Upload -->
+      <label for="invoice">Wählen Sie eine Datei:</label>
       <div class="file-input-wrapper">
         <button type="button" class="btn-file" onclick="document.getElementById('invoice').click()">Datei auswählen</button>
-        <input type="file" id="invoice" name="invoice" accept="application/pdf" onchange="updateFileName('invoice')" required>
+        <input type="file" id="invoice" name="invoice" accept="application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onchange="updateFileName('invoice')" required>
       </div>
       <span id="invoice-name" class="file-name"></span>
       
+      <!-- Submit -->
       <button type="submit" class="submit-btn">Datei verarbeiten</button>
     </form>
   </div>
