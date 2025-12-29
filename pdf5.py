@@ -165,7 +165,8 @@ for i, row in merged_df.iterrows():
         compare_results.append(fehler_row)
 
 df_final = pd.DataFrame(compare_results)
-final_file = "Fehlerreport.xlsx"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+final_file = os.path.join(BASE_DIR, "Fehlerreport.xlsx")
 with pd.ExcelWriter(final_file, engine="openpyxl") as writer:
     df_final.to_excel(writer, index=False, sheet_name="Fehlerreport")
     worksheet = writer.sheets["Fehlerreport"]

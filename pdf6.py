@@ -320,8 +320,8 @@ for i, row in merged_df.iterrows():
         compare_results.append(fehler_row)
 
 # Ensure file is created in the same directory as the script (BASE_DIR from app.py)
-script_dir = os.path.dirname(os.path.abspath(__file__))
-final_file = os.path.join(script_dir, "Fehlerreport.xlsx")
+BASE_DIR = os.environ.get("BASE_DIR", os.getcwd())
+final_file = os.path.join(BASE_DIR, "Fehlerreport.xlsx")
 
 # Always remove old Fehlerreport.xlsx before creating new one to avoid caching issues
 if os.path.exists(final_file):
