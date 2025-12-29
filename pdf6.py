@@ -3,6 +3,7 @@ import pandas as pd
 from openpyxl import load_workbook
 import json
 import math
+import httpx
 
 # Require the uploaded file path from app.py via environment.
 filename = os.environ.get("INPUT_EXCEL_PATH")
@@ -45,8 +46,17 @@ print(new_df.head())
 with open("config.json", "r", encoding="utf-8") as f:
     config = json.load(f)
 
-url_service_leistungen = config["ca3_service_leistungen"]
-url_service_leistungen_rrm = config["rrm_service_leistungen"]
+url_service_leistungen = os.getenv("ca3_service_leistungen")
+url_service_leistungen_rrm = os.getenv("rrm_service_leistungen")
+
+if not url_service_leistungen or not url_service_leistungen_rrm:
+    config_path = os.path.join(os.getcwd(), "config.json")
+    if os.path.exists(config_path):
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        url_service_leistungen = config.get("ca3_service_leistungen", "")
+        url_service_leistungen_rrm = config.get("rrm_service_leistungen", "")
+
 
 df_metabase = pd.read_json(url_service_leistungen)
 print(df_metabase.head())

@@ -137,10 +137,31 @@ def index():
                     os.remove(path)
         elif rechnungstyp == "pdf5":
             # Schild und Ausweise Excel flow
-            target_excel = os.path.join(BASE_DIR, 'Ausweise + Schilder 51666408.xlsx')
+            target_excel = os.path.join(BASE_DIR, 'Ausweise_Schilder.xlsx')
             if os.path.exists(target_excel):
                 os.remove(target_excel)
             os.replace(temp_path, target_excel)
+
+
+            # env
+            PDF5_URL = os.getenv("ca3_ausweise_schilder") 
+            
+            # # Fallback to config.json 
+            if not PDF5_URL: 
+                config_path = os.path.join(BASE_DIR, "config.json") 
+                if os.path.exists(config_path): 
+                    with open(config_path) as f: 
+                        config = json.load(f) 
+                    PDF5_URL = config.get("ca3_ausweise_schilder", "")
+
+            # resp_pdf5 = httpx.get(PDF5_URL, timeout=120, follow_redirects=True) 
+            # if resp_pdf5.status_code == 200: 
+            #     data_pdf5 = resp_pdf5.json() 
+            #     df_pdf5 = pd.json_normalize(data_pdf5) 
+            #     pdf5_path = os.path.join(BASE_DIR, 'pdf5_data.xlsx') 
+            #     df_pdf5.to_excel(pdf5_path, index=False, engine="openpyxl") 
+            #     print("Excel PDF5 erfolgreich gespeichert!") 
+            # else: print("Error while saving PDF5 file:", resp_pdf5.status_code, resp_pdf5.text[:200])
 
             run_analysis(
                 script_name="pdf5.py",
@@ -165,6 +186,37 @@ def index():
             if os.path.exists(target_excel):
                 os.remove(target_excel)
             os.replace(temp_path, target_excel)
+
+            # env
+            PDF6_URL_CA3 = os.getenv("ca3_service_leistungen") 
+            PDF6_URL_RRM = os.getenv("rrm_service_leistungen")
+
+            # Fallback to config.json 
+            if not PDF6_URL_CA3 or not PDF6_URL_RRM: 
+                config_path = os.path.join(BASE_DIR, "config.json") 
+                if os.path.exists(config_path): 
+                    with open(config_path) as f: 
+                        config = json.load(f) 
+                    PDF6_URL_CA3 = config.get("ca3_service_leistungen", "")
+                    PDF6_URL_RRM = config.get("rrm_service_leistungen", "")
+            
+            # resp_pdf6_ca3 = httpx.get(PDF6_URL_CA3, timeout=120, follow_redirects=True) 
+            # if resp_pdf6_ca3.status_code == 200: 
+            #     data_pdf6 = resp_pdf6_ca3.json() 
+            #     df_pdf6 = pd.json_normalize(data_pdf6) 
+            #     pdf6_path = os.path.join(BASE_DIR, 'pdf6_data_ca3.xlsx') 
+            #     df_pdf6.to_excel(pdf6_path, index=False, engine="openpyxl") 
+            #     print("Excel PDF6 erfolgreich gespeichert!") 
+            # else: print("Error while saving PDF6 file:", resp_pdf6_ca3.status_code, resp_pdf6_ca3.text[:200])
+
+            # resp_pdf6_rrm = httpx.get(PDF6_URL_RRM, timeout=120, follow_redirects=True) 
+            # if resp_pdf6_rrm.status_code == 200: 
+            #     data_pdf6 = resp_pdf6_rrm.json() 
+            #     df_pdf6 = pd.json_normalize(data_pdf6) 
+            #     pdf6_path = os.path.join(BASE_DIR, 'pdf6_data_rrm.xlsx') 
+            #     df_pdf6.to_excel(pdf6_path, index=False, engine="openpyxl") 
+            #     print("Excel PDF6 erfolgreich gespeichert!") 
+            # else: print("Error while saving PDF6 file:", resp_pdf6_rrm.status_code, resp_pdf6_rrm.text[:200])
 
             run_analysis(
                 script_name="pdf6.py",

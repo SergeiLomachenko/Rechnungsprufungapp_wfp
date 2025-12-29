@@ -3,6 +3,7 @@ import pandas as pd
 from openpyxl import load_workbook
 import json
 import math
+import httpx
 
 # Require the uploaded file path from app.py via environment.
 filename = os.environ.get("INPUT_EXCEL_PATH")
@@ -47,7 +48,15 @@ new_df = new_df[new_df['Fahrzeug'].str.strip() != ""]
 with open("config.json", "r", encoding="utf-8") as f:
     config = json.load(f)
 
-url_ausweise_schilder = config["ca3_ausweise_schilder"]
+url_ausweise_schilder = os.getenv("ca3_ausweise_schilder")
+
+if not url_ausweise_schilder:
+    config_path = os.path.join(os.getcwd(), "config.json")
+    if os.path.exists(config_path):
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        url_ausweise_schilder = config.get("ca3_ausweise_schilder", "")
+
 
 df_metabase = pd.read_json(url_ausweise_schilder)
 print(df_metabase.head())
