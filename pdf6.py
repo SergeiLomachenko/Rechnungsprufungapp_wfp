@@ -237,13 +237,13 @@ def check_code_logic_not90109020(row):
     # check VIN_vergleich
     if row.get("VIN_vergleich") == "OK":
         if row.get("Code") == 8200.0:
-            if not is_empty(row.get("9010")) or not is_empty(row.get("not90109020")):
+            if not is_empty(row.get("10010")):
                 return "OK"
             else:
                 return "NOK"
     return None
 
-merged_df["not90109020vergleich"] = merged_df.apply(check_code_logic_not90109020, axis = 1)
+merged_df["10010vergleich"] = merged_df.apply(check_code_logic_not90109020, axis = 1)
 
 def bemerkungen_logic(row):
     # Erst prüfen, ob der VIN-Match fehlt
@@ -271,8 +271,8 @@ def bemerkungen_logic(row):
         return "WFP 4900 nicht aktiviert oder kein Entschriftung-Comment im WFP 4900 (für Code 68006, 68008, 68005, 66662, 68090)"
     if row.get("20202040vergleich") == "NOK":
         return "WFP 2020 or WFP 2040 nicht aktiviert (für Code 9806)"
-    if row.get("not90109020vergleich") == "NOK":
-        return "WFP 9010 or WFP 9020 ist aktiv (für Code 8200)"
+    if row.get("10010vergleich") == "NOK":
+        return "WFP 10010 nicht aktiviert (für Code 8200)"
     return ""
 
 merged_df["Bemerkungen"] = merged_df.apply(bemerkungen_logic, axis=1)
